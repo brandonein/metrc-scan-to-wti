@@ -866,6 +866,17 @@ html .ghead { gap: 12px; } html .ghead > div { min-width: 0; } html .gnum { font
     openPicker();
   });
 
+  // Load both invoice lists in the background so they are ready when you tap Scan tags.
+  (function prefetchLists() {
+    if (!IN_GOOGLE && !(CFG.url && CFG.key)) return;
+    L.recent = L.recent || {};
+    var first = SITE, second = SITE === 'LV' ? 'FR' : 'LV';
+    call('listInvoices', { site: first }).then(function (r) { if (r && r.tabs && !L.recent[first]) L.recent[first] = r.tabs; })
+      .then(function () { return call('listInvoices', { site: second }); })
+      .then(function (r) { if (r && r.tabs && !L.recent[second]) L.recent[second] = r.tabs; })
+      .catch(function () {});
+  })();
+
   async function openPicker() {
     show('pickInv');
     paintSites();
@@ -882,7 +893,7 @@ html .ghead { gap: 12px; } html .ghead > div { min-width: 0; } html .gnum { font
       var nm = t.replace(d, '').replace(nums[0], '').replace(/\s+/g, ' ').trim() || t;
       return '<button type="button" data-inv="' + esc(n) + '"><span class="iwrap"><span class="iname">' + esc(nm) + '</span><span class="imeta">' +
         (nums[0] ? '<span class="iinv">#' + esc(nums[0]) + '</span>' + (d ? ' · ' : '') : '') + esc(d) + '</span></span><span class="ichev" aria-hidden="true">›</span></button>';
-      }).join('');
+      }).join('') || '<p class="muted">No invoices for today or the next few days. Type the invoice number above.</p>';
     } catch (err) {
       list.innerHTML = '<div class="tape"><p>' + esc(errMsg(err)) + '</p></div>';
     }
