@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=Caveat:wght@700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.6/dist/iife/reader/index.js"></script>
+<style>
+  :root {
+    --kraft: #C6A16B;
+    --sticker: #FFFFFF;
+    --ink: #201B14;
+    --metrc: #A6D4EE;
+    --metrc-ink: #17577F;
+    --tape: #CF2530;
+    --page: var(--kraft);
+    --text: var(--ink);
+    --muted: #4A3C28;
+    --soft: #6E5E47;
+    --btn-bg: var(--ink);
+    --btn-fg: #FFFFFF;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #2A2219;
+      --text: #F2E7D5;
+      --muted: #CDB894;
+      --btn-bg: #F2E7D5;
+      --btn-fg: #201B14;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text); }
+  body {
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px; line-height: 1.4;
+    padding: max(16px, env(safe-area-inset-top)) 14px 0;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 520px; margin: 0 auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  h1 { font-stretch: 75%; font-weight: 800; font-size: 28px; line-height: 1.05; margin: 2px 0 14px; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--metrc-ink); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* Scan */
+  .scan {
+    display: flex; align-items: center; gap: 14px; width: 100%; min-height: 84px; padding: 16px 20px;
+    background: var(--btn-bg); color: var(--btn-fg); border: 0; border-radius: 10px;
+    font-weight: 700; font-size: 22px; font-stretch: 85%;
+  }
+  .scan svg { width: 36px; height: 36px; flex: none; }
+  .pick { background: none; border: 0; padding: 12px 2px 0; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  /* Working */
+  .working { margin-top: 20px; display: flex; gap: 14px; align-items: center; }
+  .working img { width: 64px; height: 86px; object-fit: cover; border-radius: 6px; flex: none; }
+  .working p { margin: 0 0 8px; font-weight: 600; }
+  .bars {
+    height: 22px;
+    background: repeating-linear-gradient(90deg, var(--text) 0 2px, transparent 2px 5px, var(--text) 5px 6px, transparent 6px 9px, var(--text) 9px 12px, transparent 12px 14px);
+    opacity: .8; animation: slide 1.2s linear infinite;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  }
+  @keyframes slide { to { background-position: 56px 0; } }
+
+  /* Results */
+  .results { margin-top: 20px; display: grid; gap: 22px; }
+  .tape { background: var(--tape); color: #FFFFFF; padding: 10px 14px; border-radius: 4px; font-weight: 700; font-size: 15px; }
+  .tape p { margin: 0; }
+
+  .ghead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .gname { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .gnum { margin: 0; font-size: 30px; font-weight: 800; line-height: 1.05; }
+  .gmeta { margin: 0; text-align: right; font-size: 14px; color: var(--muted); }
+  .gmeta button { background: none; border: 0; padding: 6px 0 0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; color: var(--muted); }
+
+  .rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .r { background: var(--sticker); color: var(--ink); border-radius: 8px; }
+  .r.warn { box-shadow: inset 5px 0 0 var(--tape); }
+  .r.done { background: #EAF4FB; }
+  .rmain {
+    width: 100%; display: grid; grid-template-columns: 52px 22px 1fr 32px; grid-template-rows: auto auto;
+    align-items: center; column-gap: 6px; padding: 8px 12px 8px 10px;
+    background: none; border: 0; text-align: left; color: var(--ink);
+  }
+  .rbox {
+    grid-row: 1 / span 2; text-align: center; border-bottom: 2px solid var(--ink);
+    font-family: "Caveat", "Marker Felt", cursive; font-size: 34px; line-height: .95;
+  }
+  .rbox.q { color: var(--tape); border-color: var(--tape); }
+  .rto { grid-row: 1 / span 2; text-align: center; font-size: 18px; color: var(--soft); }
+  .rtag {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-weight: 600;
+    font-size: 24px; letter-spacing: .02em; line-height: 1.1;
+  }
+  .rtag small { font-size: 15px; font-weight: 500; color: var(--soft); letter-spacing: 0; }
+  .rtag.full { font-size: clamp(12px, 3.6vw, 15px); overflow-wrap: anywhere; }
+  .rtag.none { font-family: inherit; font-size: 16px; font-weight: 600; color: var(--tape); }
+  .rsub { grid-column: 3; font-size: 13.5px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .rstat {
+    grid-column: 4; grid-row: 1 / span 2; justify-self: end;
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 800; font-size: 16px;
+  }
+  .rstat.ok { border: 2px solid var(--metrc-ink); color: var(--metrc-ink); }
+  .rstat.warn { background: var(--tape); color: #FFFFFF; }
+  .rstat.done { background: var(--metrc-ink); color: #FFFFFF; }
+
+  .redit { padding: 2px 12px 14px; display: grid; gap: 10px; }
+  .why { margin: 0; font-size: 15px; font-weight: 600; color: var(--tape); }
+  .why.ok { color: var(--metrc-ink); }
+  .tagin {
+    width: 100%; padding: 10px 12px; border-radius: 6px; border: 0; background: var(--metrc); color: var(--ink);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-weight: 600; font-size: clamp(14px, 4.2vw, 18px);
+  }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+  .chip { height: 44px; border-radius: 8px; border: 2px solid var(--ink); background: #FFFFFF; color: var(--ink); font-weight: 700; font-size: 17px; }
+  .chip.on { background: var(--ink); color: #FFFFFF; }
+  .chip:disabled { border-color: transparent; background: #E4D6BC; color: #8A7A60; cursor: default; }
+  .acts { display: flex; gap: 8px; }
+  .btn { min-height: 46px; padding: 0 16px; border-radius: 8px; border: 2px solid var(--ink); background: #FFFFFF; color: var(--ink); font-weight: 700; font-size: 16px; }
+  .btn.solid { background: var(--ink); color: #FFFFFF; flex: 1; }
+  .btn:disabled { opacity: .45; }
+
+  .bar {
+    position: sticky; bottom: 0; z-index: 2; margin: 0 -14px; padding: 10px 14px max(12px, env(safe-area-inset-bottom));
+    background: var(--page); display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 -1px 0 rgba(32, 27, 20, .18);
+  }
+  .bar p { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted); flex: none; max-width: 40%; }
+  .bar .add { flex: 1; min-height: 56px; border: 0; border-radius: 10px; background: var(--btn-bg); color: var(--btn-fg); font-weight: 700; font-size: 19px; }
+  .bar .add:disabled { opacity: .45; }
+
+  .panel { background: var(--sticker); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; }
+  .panel p { margin: 0; font-weight: 600; }
+  .alts { display: grid; gap: 6px; }
+  .alts button { text-align: left; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--ink); background: #FFFFFF; color: var(--ink); font-weight: 600; }
+  .inrow { display: flex; gap: 8px; }
+  .inrow input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--ink); background: #FFFFFF; color: var(--ink); font-size: 20px; font-weight: 700; }
+  /* Scan tags (live) */
+  .scan.alt { background: transparent; color: var(--text); border: 2px solid var(--text); min-height: 60px; font-size: 18px; margin-top: 10px; }
+  .muted { margin: 0; color: var(--muted); font-size: 15px; }
+  .invlist { display: grid; gap: 6px; margin: 10px 0; }
+  .invlist button { text-align: left; padding: 12px; border-radius: 8px; border: 0; background: var(--sticker); color: var(--ink); font-weight: 700; font-size: 16px; }
+  .live { display: grid; gap: 12px; }
+  .ttl { margin: 0; font-size: 20px; font-weight: 700; }
+  .tbox { font-family: "Caveat", "Marker Felt", cursive; font-size: 40px; line-height: .9; border-bottom: 2px solid currentColor; padding: 0 6px; }
+  .tsub { font-size: 15px; font-weight: 500; color: var(--muted); }
+  .viewer { position: relative; border-radius: 10px; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
+  .viewer video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .frame { position: absolute; left: 8%; right: 8%; top: 25%; bottom: 25%; border: 3px solid var(--metrc); border-radius: 8px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+  .vmsg { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 12px; background: rgba(0, 0, 0, .6); color: #FFFFFF; font-weight: 700; font-size: 15px; }
+  .last { background: var(--sticker); color: var(--ink); border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .last.bad { box-shadow: inset 5px 0 0 var(--tape); }
+  .last p { margin: 0; }
+  .lmain { font-weight: 700; font-size: 22px; }
+  .ltag { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+  .lmsg { font-size: 14px; color: var(--soft); }
+  .last.bad .lmsg { color: var(--tape); font-weight: 600; }
+  .lacts { display: grid; gap: 6px; }
+  #liveLast { display: grid; gap: 6px; }
+  .torch { position: absolute; top: 10px; right: 10px; border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(0, 0, 0, .6); color: #FFFFFF; font-weight: 700; font-size: 15px; }
+  .live .chip.has { background: #E4D6BC; color: #6E5E47; border-color: transparent; }
+  .live .chip.has.on { background: var(--tape); color: #FFFFFF; }
+  .live .chip:disabled { opacity: .6; }
+  .btn.big { min-height: 60px; font-size: 19px; flex: 2; }
+  .flabel { display: block; font-size: 14px; font-weight: 700; margin: 10px 0 4px; }
+  .field { width: 100%; padding: 12px; border-radius: 8px; border: 2px solid var(--ink); background: #FFFFFF; color: var(--ink); font-size: 15px; }
+  #setup .why { margin: 10px 0; }
+  .note { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--sticker); color: var(--ink); font-size: 15px; }
+  @media (prefers-reduced-motion: reduce) { .bars { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>WTI tag scanner</h1>
+
+  <section id="setup" hidden>
+    <p class="ttl">Connect to your sheet</p>
+    <p class="muted" style="margin:6px 0 12px">One time only. Both come from your Apps Script project (see the setup steps).</p>
+    <label class="flabel" for="cfgUrl">Scanner link (ends in /exec)</label>
+    <input class="field" id="cfgUrl" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+    <label class="flabel" for="cfgKey">Scanner key</label>
+    <input class="field" id="cfgKey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="40 letters and numbers">
+    <p class="why" id="cfgMsg" aria-live="polite"></p>
+    <button class="btn solid" type="button" id="cfgSave" style="width:100%;min-height:52px">Connect</button>
+  </section>
+
+  <section id="start">
+    <button class="scan" id="scanTagsBtn" type="button">
+      <svg viewBox="0 0 40 40" aria-hidden="true" fill="currentColor"><rect x="4" y="9" width="3" height="22"/><rect x="10" y="9" width="2" height="22"/><rect x="15" y="9" width="4" height="22"/><rect x="22" y="9" width="2" height="22"/><rect x="27" y="9" width="3" height="22"/><rect x="33" y="9" width="2" height="22"/></svg>
+      <span>Scan tags</span>
+    </button>
+    <label class="scan alt" for="cam" role="button" tabindex="0">
+      <svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round">
+        <path d="M5 13h7l3-5h10l3 5h7v20H5z"/><circle cx="20" cy="22" r="6.5"/>
+      </svg>
+      <span id="scanLabel">Photo of several boxes</span>
+    </label>
+    <input id="cam" type="file" accept="image/*" capture="environment">
+    <input id="lib" type="file" accept="image/*">
+    <button class="pick" id="pickBtn" type="button">Use a photo you already took</button>
+    <button class="pick" id="cfgOpen" type="button" hidden style="display:block">Scanner settings</button>
+  </section>
+
+  <section class="working" id="working" hidden aria-live="polite">
+    <img id="thumb" alt="">
+    <div style="flex:1"><p id="step">Reading the photo…</p><div class="bars" aria-hidden="true"></div></div>
+  </section>
+
+  <section class="results" id="results" aria-live="polite"></section>
+
+  <section id="pickInv" hidden>
+    <p class="ttl">Which invoice?</p>
+    <div class="inrow" style="margin-top:10px"><input id="invNum" inputmode="numeric" pattern="[0-9]*" placeholder="Invoice #" aria-label="Invoice number">
+      <button class="btn solid" type="button" id="invFind" style="flex:none">Open</button></div>
+    <div class="invlist" id="invList"></div>
+    <button class="btn" type="button" id="invCancel">Back</button>
+  </section>
+
+  <section id="live" class="live" hidden>
+    <div class="ghead" id="liveHead"></div>
+    <p class="ttl" id="liveTarget"></p>
+    <div class="viewer" id="viewer"><video id="video" playsinline muted></video><div class="frame" aria-hidden="true"></div><button class="torch" type="button" id="torchBtn" hidden>Light on</button><p class="vmsg" id="vmsg"></p></div>
+    <p class="note" id="camNote" hidden>Google’s app page doesn’t allow the live camera, so use <b>Take photo of label</b>. Your phone reads the barcode in about a second.</p>
+    <div id="liveLast" aria-live="polite"></div>
+    <div class="chips" id="liveChips" role="group" aria-label="Pick a box"></div>
+    <input id="snap" type="file" accept="image/*" capture="environment">
+    <div class="acts"><button class="btn" type="button" id="snapBtn">Photo of a label</button><button class="btn solid" type="button" id="liveDone">Done</button></div>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var TAG_RE = /^1A4[0-9A-F]{21}$/;
+  var OCR_WORKERS = 4;         // sections read at the same time (more causes errors)
+  var BARCODE_MS = 3500;       // time limit for the barcode search
+  var FAST_PATH_MAX = 3;       // photos with up to this many boxes can skip the section pass
+  var S = { data: null, sections: null, error: '', invoicePanel: false };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var cleanTag = function (s) { return String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, ''); };
+  var errMsg = function (e) { return (e && e.message) || String(e); };
+  var step = function (t) { $('step').textContent = t; };
+
+  // Inside Google's page the scanner talks to the sheet directly. Hosted on its own
+  // page (where the live camera works) it goes through the script's key-protected bridge.
+  var IN_GOOGLE = !!(window.google && google.script && google.script.run);
+  var CFG = { url: '', key: '' };
+  try { CFG.url = localStorage.getItem('wti.url') || ''; CFG.key = localStorage.getItem('wti.key') || ''; } catch (e) {}
+
+  function call(fn, arg) {
+    if (IN_GOOGLE) {
+      return new Promise(function (resolve, reject) {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](arg);
+      });
+    }
+    if (!CFG.url || !CFG.key) return Promise.reject(new Error('Scanner settings are missing.'));
+    return fetch(CFG.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // keeps it a simple request
+      body: JSON.stringify({ key: CFG.key, fn: fn, arg: arg === undefined ? null : arg }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error('The sheet didn’t answer (' + r.status + ').');
+      return r.json();
+    }, function () {
+      throw new Error('Couldn’t reach the sheet. Check your connection.');
+    }).then(function (j) {
+      if (j && j.error) throw new Error(j.error);
+      return j ? j.result : null;
+    });
+  }
+
+  // ── First-time setup on the hosted page ──
+  function showSetup() {
+    ['start', 'working', 'results', 'pickInv', 'live'].forEach(function (id) { $(id).hidden = true; });
+    $('setup').hidden = false;
+    $('cfgUrl').value = CFG.url; $('cfgKey').value = CFG.key; $('cfgMsg').textContent = '';
+  }
+  $('cfgSave').addEventListener('click', async function () {
+    var url = $('cfgUrl').value.trim(), key = $('cfgKey').value.trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { $('cfgMsg').textContent = 'The link should start with https://script.google.com/ and end with /exec.'; return; }
+    if (key.length < 20) { $('cfgMsg').textContent = 'That key looks too short. Copy the whole key from the Apps Script log.'; return; }
+    CFG.url = url; CFG.key = key;
+    $('cfgMsg').textContent = 'Checking…';
+    try {
+      await call('listInvoices');
+      try { localStorage.setItem('wti.url', url); localStorage.setItem('wti.key', key); } catch (e) {}
+      $('setup').hidden = true; $('start').hidden = false;
+    } catch (err) {
+      $('cfgMsg').textContent = errMsg(err);
+    }
+  });
+  $('cfgOpen').addEventListener('click', showSetup);
+  if (!IN_GOOGLE) {
+    $('cfgOpen').hidden = false;
+    if (!CFG.url || !CFG.key) showSetup();
+  }
+
+  try { if (window.ZXingWASM) ZXingWASM.prepareZXingModule({ fireImmediately: true }).catch(function () {}); } catch (e) {}
+
+  $('pickBtn').addEventListener('click', function () { $('lib').click(); });
+  document.querySelector('.scan').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('cam').click(); }
+  });
+  $('cam').addEventListener('change', onFile);
+  $('lib').addEventListener('change', onFile);
+
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('That photo couldn’t be opened. Try taking it again.')); };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  /** The whole photo, plus a grid of overlapping sections so small print stays sharp. */
+  function makeSections(img) {
+    var W = img.naturalWidth, H = img.naturalHeight, portrait = H >= W;
+    var cols = portrait ? 2 : 3, rows = portrait ? 3 : 2;
+    var tw = W / cols, th = H / rows;
+    var list = [{ x: 0, y: 0, w: W, h: H, whole: true }];
+    for (var r = 0; r <= (rows - 1) * 2; r++) {
+      for (var c = 0; c <= (cols - 1) * 2; c++) list.push({ x: c * tw / 2, y: r * th / 2, w: tw, h: th, whole: false });
+    }
+    return list;
+  }
+
+  function sectionJpeg(img, s) {
+    var k = s.whole ? Math.min(1, 2400 / Math.max(s.w, s.h)) : Math.min(2, Math.max(1, 1600 / Math.max(s.w, s.h)));
+    var c = document.createElement('canvas');
+    c.width = Math.round(s.w * k); c.height = Math.round(s.h * k);
+    var g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, s.x, s.y, s.w, s.h, 0, 0, c.width, c.height);
+    var q = 0.85, data = c.toDataURL('image/jpeg', q);
+    while (data.length * 0.75 > 1900000 && q > 0.5) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
+    c.width = c.height = 0;
+    return data.split(',')[1];
+  }
+
+  function ocrSections(img, sections, onProgress) {
+    var texts = new Array(sections.length), next = 0, done = 0, lastErr = null;
+    function worker() {
+      if (next >= sections.length) return Promise.resolve();
+      var i = next++;
+      var b64 = sectionJpeg(img, sections[i]);
+      var read = function () { return call('readPhoto', { image: b64, mimeType: 'image/jpeg' }); };
+      return read()
+        .catch(function () { return new Promise(function (ok) { setTimeout(ok, 900); }).then(read); }) // one retry
+        .then(function (r) { texts[i] = r.text || ''; }, function (e) { texts[i] = null; lastErr = e; })
+        .then(function () { onProgress(++done, sections.length); return worker(); });
+    }
+    var pool = [];
+    for (var w = 0; w < OCR_WORKERS; w++) pool.push(worker());
+    return Promise.all(pool).then(function () {
+      if (texts.every(function (t) { return t === null; })) throw lastErr || new Error('The photo couldn’t be read.');
+      return texts;
+    });
+  }
+
+  function drawScaled(src, maxEdge) {
+    var w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    var s = Math.min(1, maxEdge / Math.max(w, h));
+    var c = document.createElement('canvas');
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    var g = c.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(src, 0, 0, c.width, c.height);
+    return { canvas: c, scale: s };
+  }
+
+  /** Barcodes anywhere in the photo, with their centers in original-photo pixels. */
+  async function findBarcodes(img) {
+    if (!window.ZXingWASM || !ZXingWASM.readBarcodes) return [];
+    var opts = { formats: ['Code128'], tryHarder: true, maxNumberOfSymbols: 12 };
+    var found = {};
+    var keep = function (rs, ox, oy, k) {
+      (rs || []).forEach(function (r) {
+        var t = cleanTag(r.text);
+        if (!r.isValid || !TAG_RE.test(t) || found[t]) return;
+        var p = r.position;
+        var cx = (p.topLeft.x + p.topRight.x + p.bottomLeft.x + p.bottomRight.x) / 4;
+        var cy = (p.topLeft.y + p.topRight.y + p.bottomLeft.y + p.bottomRight.y) / 4;
+        found[t] = { tag: t, cx: ox + cx / k, cy: oy + cy / k };
+      });
+    };
+    var deadline = performance.now() + BARCODE_MS;
+    var d = drawScaled(img, 4000), full = d.canvas, s = d.scale;
+    var W = full.width, H = full.height;
+    keep(await ZXingWASM.readBarcodes(full.getContext('2d').getImageData(0, 0, W, H), opts), 0, 0, s);
+    var up = Math.max(W, H) < 2600 ? 2 : 1;
+    var tw = Math.round(W / 2), th = Math.round(H / 3);
+    var c = document.createElement('canvas');
+    var g = c.getContext('2d', { willReadFrequently: true });
+    for (var y = 0; y < H; y += Math.round(th / 2)) {
+      for (var x = 0; x < W; x += Math.round(tw / 2)) {
+        if (performance.now() > deadline) break;
+        var w = Math.min(tw, W - x), h = Math.min(th, H - y);
+        if (w < tw / 2 || h < th / 2) continue;
+        c.width = w * up; c.height = h * up;
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(full, x, y, w, h, 0, 0, c.width, c.height);
+        keep(await ZXingWASM.readBarcodes(g.getImageData(0, 0, c.width, c.height), opts), x / s, y / s, up * s);
+      }
+    }
+    full.width = full.height = c.width = c.height = 0;
+    return Object.keys(found).map(function (k) { return found[k]; });
+  }
+
+  // ───── Scan: one quick read of the whole photo; a closer look only if needed ─────
+
+  function within(codes, s) {
+    return codes.filter(function (b) { return b.cx >= s.x && b.cx < s.x + s.w && b.cy >= s.y && b.cy < s.y + s.h; })
+      .map(function (b) { return { tag: b.tag, y: (b.cy - s.y) / s.h }; });
+  }
+
+  function allCards(d) {
+    return [].concat.apply([], ((d && d.groups) || []).map(function (g) { return g.cards; }));
+  }
+
+  /** Good enough to skip the closer look: every box seen was matched with confidence. */
+  function complete(d, text) {
+    if (!d || d.needInvoice) return false;
+    var cards = allCards(d);
+    if (!cards.length || cards.length > FAST_PATH_MAX) return false;
+    var up = String(text || '').toUpperCase();
+    var stickersSeen = (up.match(/P[KX]G\s*#/g) || []).length;
+    var labelsSeen = (up.match(/MASSACHUSETTS/g) || []).length;
+    if (Math.max(stickersSeen, labelsSeen) > cards.length) return false;
+    return cards.every(function (c) {
+      return c.reason === 'already' || (c.reason === 'sticker' && !c.unsure && !c.outlier && c.how !== 'rebuilt' && TAG_RE.test(c.tag));
+    });
+  }
+
+  async function onFile(e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    S.data = null; S.error = ''; S.invoicePanel = false;
+    $('results').innerHTML = '';
+    $('working').hidden = false;
+    $('start').hidden = true;
+    $('thumb').src = URL.createObjectURL(file);
+    step('Reading…');
+    try {
+      var img = await loadImage(file);
+      var secs = makeSections(img);
+      var whole = secs[0];
+      var wholeRead = call('readPhoto', { image: sectionJpeg(img, whole), mimeType: 'image/jpeg' })
+        .then(function (r) { return r.text || ''; }, function () { return ''; });
+      var codes = [];
+      try { codes = await findBarcodes(img); } catch (err) { codes = []; }
+      var wholeText = await wholeRead;
+      var sections = [{ text: wholeText, whole: true, barcodes: within(codes, whole) }];
+      var res = wholeText ? await call('processPhoto', { sections: sections }) : null;
+
+      if (!complete(res, wholeText)) {
+        var grid = secs.slice(1);
+        step('Reading closer…');
+        var texts = await ocrSections(img, grid, function (n, total) { step('Reading closer… ' + n + ' of ' + total); });
+        sections = sections.concat(grid.map(function (s, i) {
+          return { text: texts[i] || '', whole: false, barcodes: within(codes, s) };
+        }));
+        step('Matching…');
+        res = await call('processPhoto', { sections: sections });
+      }
+      S.sections = sections;
+      setData(res);
+    } catch (err) {
+      S.error = errMsg(err);
+    }
+    $('working').hidden = true;
+    $('start').hidden = false;
+    $('scanLabel').textContent = 'Scan more boxes';
+    render();
+  }
+
+  // ───── State ─────
+
+  function setData(d) {
+    S.data = d;
+    S.invoicePanel = !!d.needInvoice;
+    (d.groups || []).forEach(function (g) {
+      g.cards = g.cards.map(function (c) {
+        var card = {
+          tag: c.tag, how: c.how, sel: c.guessRow, reason: c.reason, unsure: !!c.unsure,
+          alsoRead: c.alsoRead || [], outlier: c.outlier || null,
+          status: c.reason === 'already' ? 'saved' : 'ready', savedRow: c.reason === 'already' ? c.guessRow : null,
+          already: c.reason === 'already', dups: null, err: '',
+        };
+        var at = rowOf(g, card.sel);
+        if (card.status !== 'saved' && at && at.tag && at.tag !== cleanTag(card.tag)) { card.sel = null; card.reason = 'unread'; }
+        card.open = needsLook(card);
+        return card;
+      });
+    });
+  }
+
+  function needsLook(c) {
+    if (c.status === 'saved') return false;
+    return !TAG_RE.test(cleanTag(c.tag)) || !c.sel || c.unsure || c.how === 'rebuilt' || !!c.outlier ||
+      !!c.dups || !!c.err || c.alsoRead.length > 0 || (c.reason !== 'sticker' && c.reason !== 'picked');
+  }
+
+  function rowOf(g, n) { return g.rows.filter(function (r) { return r.row === n; })[0]; }
+
+  function shortItem(item) {
+    return String(item || '').replace(/^[^:]*:\s*/, '').replace(/^Tarantula Infused\s*/i, '').replace(/\s+PR\s+\d.*$/i, '');
+  }
+
+  // Most tags share one start, so rows show just the last six digits.
+  function commonStart(g) {
+    var counts = {};
+    g.rows.concat(g.cards.map(function (c) { return { tag: cleanTag(c.tag) }; })).forEach(function (r) {
+      if (TAG_RE.test(r.tag)) counts[r.tag.slice(0, 18)] = (counts[r.tag.slice(0, 18)] || 0) + 1;
+    });
+    return Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || '1A40A03000002BF000';
+  }
+
+  // ───── Rendering ─────
+
+  function whyLine(c, g) {
+    var r = rowOf(g, c.sel);
+    if (c.err) return { t: c.err };
+    if (c.dups) return { t: 'This tag is already on ' + c.dups.map(function (x) {
+      var dr = rowOf(g, x.row); return dr ? 'box ' + dr.box : x.a1; }).join(', ') + '. Add it here too?' };
+    if (!TAG_RE.test(cleanTag(c.tag))) return { t: c.tag ? 'Tags are 24 characters and start with 1A4.' : 'Couldn’t read this tag. Type it from the blue label.' };
+    if (!r) return { t: 'Couldn’t read the box number. Tap it below.' };
+    if (c.outlier) return { t: c.outlier.message };
+    if (c.how === 'rebuilt') return { t: 'Part of the tag was unclear. Check every digit.' };
+    if (c.unsure || c.reason === 'label' || c.reason === 'first-empty') return { t: 'Box number unclear. Is box ' + r.box + ' right?' };
+    if (c.alsoRead.length) return { t: 'Also read as …' + c.alsoRead[0].slice(-6) + '. Check the label.' };
+    return { t: c.reason === 'picked' ? 'Box ' + r.box + ' picked by you.' : 'Pkg# ' + r.box + ' read from the sticker.', ok: true };
+  }
+
+  function rowHTML(g, gi, c, ci, start) {
+    var r = rowOf(g, c.status === 'saved' ? c.savedRow : c.sel);
+    var tag = cleanTag(c.tag);
+    var look = needsLook(c);
+    var cls = c.status === 'saved' ? ' done' : look ? ' warn' : '';
+    var stat = c.status === 'saved' ? '<span class="rstat done" aria-label="Added">✓</span>'
+      : c.status === 'saving' ? '<span class="rstat ok" aria-label="Adding">…</span>'
+      : look ? '<span class="rstat warn" aria-label="Check">!</span>' : '<span class="rstat ok" aria-label="Ready">✓</span>';
+    var tagHTML = !tag ? '<span class="rtag none">No tag</span>'
+      : (TAG_RE.test(tag) && tag.indexOf(start) === 0)
+        ? '<span class="rtag"><small>…</small>' + esc(tag.slice(18)) + '</span>'
+        : '<span class="rtag full">' + esc(tag) + '</span>';
+    var html = '<li class="r' + cls + '"><button type="button" class="rmain" data-act="toggle" data-g="' + gi + '" data-c="' + ci + '" aria-expanded="' + !!c.open + '">' +
+      '<span class="rbox' + (r ? '' : ' q') + '">' + (r ? esc(r.box) : '?') + '</span>' +
+      '<span class="rto" aria-hidden="true">→</span>' + tagHTML + stat +
+      '<span class="rsub">' + esc(r ? shortItem(r.item) : 'Box not known') + '</span></button>';
+    if (!c.open) return html + '</li>';
+
+    html += '<div class="redit">';
+    if (c.status === 'saved') {
+      html += '<p class="why ok">' + (c.already ? 'Already on box ' + esc(r.box) + '.' : 'Added to box ' + esc(r.box) + '.') + '</p>';
+      if (c.err) html += '<p class="why">' + esc(c.err) + '</p>';
+      html += '<div class="acts">' + (c.already ? '' : '<button class="btn" type="button" data-act="undo" data-g="' + gi + '" data-c="' + ci + '">Undo</button>') +
+        '<button class="btn" type="button" data-act="toggle" data-g="' + gi + '" data-c="' + ci + '">Close</button></div>';
+      return html + '</div></li>';
+    }
+    var why = whyLine(c, g);
+    html += '<p class="why' + (why.ok ? ' ok' : '') + '">' + esc(why.t) + '</p>';
+    html += '<input class="tagin" data-act="tag" data-g="' + gi + '" data-c="' + ci + '" value="' + esc(tag) + '" placeholder="1A40A03000002BF000…" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="METRC tag">';
+    html += '<div class="chips" role="group" aria-label="Box number">' + g.rows.map(function (x) {
+      var taken = x.tag && x.tag !== tag;
+      return '<button type="button" class="chip' + (x.row === c.sel && !taken ? ' on' : '') + '" data-act="box" data-g="' + gi + '" data-c="' + ci + '" data-row="' + x.row + '"' +
+        (taken ? ' disabled' : '') + ' aria-pressed="' + (x.row === c.sel) + '">' + esc(x.box) + '</button>';
+    }).join('') + '</div>';
+    var ok = r && TAG_RE.test(tag);
+    html += '<div class="acts"><button class="btn solid" type="button" data-act="saveOne" data-g="' + gi + '" data-c="' + ci + '"' + (ok ? '' : ' disabled') + '>' +
+      (r ? 'Save to box ' + esc(r.box) : 'Pick a box') + '</button>' +
+      '<button class="btn" type="button" data-act="remove" data-g="' + gi + '" data-c="' + ci + '">Remove</button></div>';
+    return html + '</div></li>';
+  }
+
+  function readyCards(g) {
+    return g.cards.filter(function (c) { return c.status === 'ready' && !needsLook(c); });
+  }
+
+  function groupHTML(g, gi) {
+    var tagged = g.rows.filter(function (r) { return r.tag; }).length;
+    var start = commonStart(g);
+    return '<section class="group"><div class="ghead"><div>' +
+      '<p class="gname">' + esc(g.customer) + '</p><p class="gnum">' + esc(g.invoiceLabel || g.invoice) + '</p></div>' +
+      '<p class="gmeta">' + tagged + ' of ' + g.rows.length + ' tagged<br>' +
+      '<button type="button" data-act="invoice">Wrong invoice?</button></p></div>' +
+      '<ol class="rows">' + g.cards.map(function (c, ci) { return rowHTML(g, gi, c, ci, start); }).join('') + '</ol></section>';
+  }
+
+  function barHTML() {
+    var groups = S.data.groups || [];
+    var ready = groups.reduce(function (n, g) { return n + readyCards(g).length; }, 0);
+    var look = groups.reduce(function (n, g) {
+      return n + g.cards.filter(function (c) { return c.status !== 'saved' && needsLook(c); }).length; }, 0);
+    var saving = groups.some(function (g) { return g.cards.some(function (c) { return c.status === 'saving'; }); });
+    if (!ready && !look) return '';
+    return '<div class="bar">' + (look ? '<p>' + look + ' to check</p>' : '') +
+      '<button class="add" type="button" data-act="saveAll"' + (ready && !saving ? '' : ' disabled') + '>' +
+      (saving ? 'Adding…' : ready ? 'Add ' + ready + ' tag' + (ready === 1 ? '' : 's') : 'Check the rows marked !') + '</button></div>';
+  }
+
+  function invoicePanelHTML() {
+    var d = S.data || {};
+    var current = (d.groups || []).map(function (g) { return g.sheetName; });
+    var alts = (d.alternatives || []).filter(function (a) { return current.indexOf(a.sheetName) < 0; });
+    return '<div class="panel"><p>' + (current.length ? 'Which invoice are these boxes on?' : 'Couldn’t read the invoice number.') + '</p>' +
+      (alts.length ? '<div class="alts">' + alts.map(function (a) {
+        return '<button type="button" data-act="pickTab" data-name="' + esc(a.sheetName) + '">' + esc(a.sheetName) + '</button>';
+      }).join('') + '</div>' : '') +
+      '<div class="inrow"><input id="invIn" inputmode="numeric" pattern="[0-9]*" placeholder="Invoice #" aria-label="Invoice number">' +
+      '<button class="btn solid" type="button" data-act="findInv">Find</button></div>' +
+      (current.length ? '<button class="btn" type="button" data-act="closeInv">Cancel</button>' : '') + '</div>';
+  }
+
+  function render() {
+    var out = '';
+    if (S.error) out += '<div class="tape"><p>' + esc(S.error) + '</p></div>';
+    if (S.data) {
+      if (S.invoicePanel) out += invoicePanelHTML();
+      else out += (S.data.groups || []).map(groupHTML).join('') + barHTML();
+    }
+    $('results').innerHTML = out;
+  }
+
+  // ───── Actions ─────
+
+  $('results').addEventListener('input', function (e) {
+    var el = e.target;
+    if (el.dataset.act !== 'tag') return;
+    var g = S.data.groups[+el.dataset.g], c = g.cards[+el.dataset.c];
+    c.tag = cleanTag(el.value);
+    c.how = c.tag ? 'typed' : 'none';
+    c.dups = null; c.err = ''; c.outlier = null; c.alsoRead = [];
+    var btn = el.closest('.redit').querySelector('[data-act="saveOne"]');
+    btn.disabled = !(rowOf(g, c.sel) && TAG_RE.test(c.tag));
+  });
+
+  async function save(pairs, force) {
+    pairs.forEach(function (p) { p.c.status = 'saving'; p.c.err = ''; });
+    render();
+    try {
+      var res = await call('saveTags', { items: pairs.map(function (p) {
+        var r = rowOf(p.g, p.c.sel);
+        return { sheetName: p.g.sheetName, row: r.row, box: r.box, tag: cleanTag(p.c.tag), force: !!force };
+      }) });
+      (S.data.groups || []).forEach(function (g) { if (res.rows && res.rows[g.sheetName]) g.rows = res.rows[g.sheetName]; });
+      pairs.forEach(function (p, i) {
+        var r = res.results[i], c = p.c;
+        if (r.ok) { c.status = 'saved'; c.savedRow = c.sel; c.already = !!r.already; c.dups = null; c.open = false; }
+        else { c.status = 'ready'; c.dups = r.duplicates || null; c.err = r.error || ''; c.open = true; }
+      });
+    } catch (err) {
+      pairs.forEach(function (p) { p.c.status = 'ready'; p.c.err = errMsg(err); p.c.open = true; });
+    }
+    render();
+  }
+
+  $('results').addEventListener('click', async function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+    var g = S.data && S.data.groups && el.dataset.g != null ? S.data.groups[+el.dataset.g] : null;
+    var c = g ? g.cards[+el.dataset.c] : null;
+
+    if (act === 'toggle') { c.open = !c.open; render(); }
+    if (act === 'remove') { g.cards.splice(g.cards.indexOf(c), 1); render(); }
+
+    if (act === 'box') {
+      var row = +el.dataset.row;
+      // A box holds one tag: free it from any other unsaved row first.
+      g.cards.forEach(function (o) { if (o !== c && o.sel === row && o.status !== 'saved') { o.sel = null; o.reason = 'unread'; o.open = true; } });
+      c.sel = row; c.reason = 'picked'; c.unsure = false; c.err = ''; c.dups = null; c.outlier = null;
+      render();
+    }
+
+    if (act === 'saveOne') await save([{ g: g, c: c }], !!c.dups);
+    if (act === 'saveAll') {
+      var pairs = [];
+      (S.data.groups || []).forEach(function (gg) { readyCards(gg).forEach(function (cc) { pairs.push({ g: gg, c: cc }); }); });
+      if (pairs.length) await save(pairs, false);
+    }
+
+    if (act === 'undo') {
+      var sr = rowOf(g, c.savedRow);
+      try {
+        var u = await call('clearTag', { sheetName: g.sheetName, row: sr.row, tag: cleanTag(c.tag) });
+        if (u.rows) g.rows = u.rows;
+        c.status = 'ready'; c.sel = sr.row; c.savedRow = null; c.err = ''; c.open = true; c.reason = 'picked';
+      } catch (err) { c.err = errMsg(err); }
+      render();
+    }
+
+    if (act === 'invoice') { S.invoicePanel = true; render(); }
+    if (act === 'closeInv') { S.invoicePanel = false; render(); }
+    if (act === 'pickTab') await reanalyze({ sheetName: el.dataset.name });
+    if (act === 'findInv') {
+      var v = ($('invIn').value || '').replace(/\D/g, '');
+      if (v.length >= 4) await reanalyze({ invoice: v });
+    }
+  });
+
+  $('results').addEventListener('keydown', function (e) {
+    if (e.target.id === 'invIn' && e.key === 'Enter') {
+      e.preventDefault();
+      $('results').querySelector('[data-act="findInv"]').click();
+    }
+  });
+
+
+  // ───── Scan tags: live camera barcode reading, one box at a time ─────
+  // Saves run in the background: a scan shows up at once, the next box is
+  // ready immediately, and quick scans are sent to the sheet together.
+
+  var L = { inv: null, target: null, stream: null, running: false, last: null, lastTag: '', lastAt: 0,
+            pending: null, detector: null, recent: null, queue: [], sending: false, problems: [],
+            accepted: {}, torch: false, wake: null, closing: false, replacing: null };
+  var liveCanvas = document.createElement('canvas');
+
+  $('scanTagsBtn').addEventListener('click', openPicker);
+
+  function show(id) {
+    ['start', 'working', 'results', 'pickInv', 'live', 'setup'].forEach(function (s) { $(s).hidden = s !== id && !(id === 'start' && s === 'results'); });
+  }
+
+  async function openPicker() {
+    show('pickInv');
+    var list = $('invList');
+    list.innerHTML = '<p class="muted">Loading invoices…</p>';
+    try {
+      if (!L.recent) L.recent = (await call('listInvoices')).tabs;
+      list.innerHTML = L.recent.map(function (n) {
+        return '<button type="button" data-inv="' + esc(n) + '">' + esc(n) + '</button>';
+      }).join('');
+    } catch (err) {
+      list.innerHTML = '<div class="tape"><p>' + esc(errMsg(err)) + '</p></div>';
+    }
+  }
+
+  $('invList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-inv]');
+    if (b) chooseInvoice({ sheetName: b.dataset.inv });
+  });
+  $('invFind').addEventListener('click', function () {
+    var v = ($('invNum').value || '').replace(/\D/g, '');
+    if (v.length >= 4) chooseInvoice({ invoice: v });
+  });
+  $('invNum').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('invFind').click(); } });
+  $('invCancel').addEventListener('click', function () { show('start'); });
+
+  async function chooseInvoice(req) {
+    $('invList').innerHTML = '<p class="muted">Opening…</p>';
+    try {
+      L.inv = await call('openInvoice', req);
+      L.last = null; L.pending = null; L.problems = [];
+      L.target = nextEmpty(null);
+      show('live');
+      renderLive();
+      startCamera();
+    } catch (err) {
+      $('invList').innerHTML = '<div class="tape"><p>' + esc(errMsg(err)) + '</p></div>';
+    }
+  }
+
+  function rowByNum(n) { return L.inv.rows.filter(function (r) { return r.row === n; })[0]; }
+
+  /** The next box without a tag, after the given row (wrapping around). */
+  function nextEmpty(afterRow) {
+    var rows = L.inv.rows, start = 0;
+    if (afterRow != null) for (var i = 0; i < rows.length; i++) if (rows[i].row === afterRow) start = i + 1;
+    for (var k = 0; k < rows.length; k++) {
+      var r = rows[(start + k) % rows.length];
+      if (!r.tag) return r.row;
+    }
+    return null;
+  }
+
+  /**
+   * A tag far from the rest of its batch is suspicious. Tags you've confirmed
+   * with "Save anyway" count as part of the batch from then on, so a new tag
+   * run only has to be confirmed once.
+   */
+  function outOfFamily(tag, row) {
+    var n = parseInt(tag.slice(-6), 10), start = tag.slice(0, 18);
+    var same = L.inv.rows.filter(function (r) { return r.tag && r.tag !== tag && r.row !== row.row && r.batch === row.batch && r.tag.slice(0, 18) === start; })
+      .map(function (r) { return parseInt(r.tag.slice(-6), 10); })
+      .concat(L.accepted[row.batch] || []);
+    if (same.length < 2) return null;
+    var near = same.reduce(function (b, v) { return Math.abs(v - n) < Math.abs(b - n) ? v : b; });
+    var spread = Math.max.apply(null, same) - Math.min.apply(null, same);
+    if (Math.abs(near - n) <= Math.max(300, 3 * spread)) return null;
+    return 'This tag doesn’t match the other ' + shortItem(row.item) + ' tags. Check the label.';
+  }
+
+  // ── Camera, flashlight, keep-awake ──
+
+  async function keepAwake() {
+    try { if (navigator.wakeLock && !L.wake) { L.wake = await navigator.wakeLock.request('screen'); L.wake.addEventListener('release', function () { L.wake = null; }); } }
+    catch (e) { L.wake = null; } // not allowed here: the phone may dim as usual
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && L.running) keepAwake();
+  });
+
+  async function startCamera() {
+    stopCamera();
+    $('camNote').hidden = true;
+    $('torchBtn').hidden = true;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no camera api');
+      L.stream = await navigator.mediaDevices.getUserMedia({
+        audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      var v = $('video');
+      v.srcObject = L.stream;
+      await v.play();
+      if (!L.detector && 'BarcodeDetector' in window) {
+        try {
+          var fm = await BarcodeDetector.getSupportedFormats();
+          if (fm.indexOf('code_128') >= 0) L.detector = new BarcodeDetector({ formats: ['code_128'] });
+        } catch (e) { L.detector = null; }
+      }
+      var track = L.stream.getVideoTracks()[0];
+      var caps = track && track.getCapabilities ? track.getCapabilities() : {};
+      L.torch = false;
+      $('torchBtn').hidden = !caps.torch;
+      $('torchBtn').textContent = 'Light on';
+      L.running = true;
+      $('viewer').hidden = false;
+      keepAwake();
+      scanLoop();
+      $('snapBtn').className = 'btn'; $('snapBtn').textContent = 'Photo of a label'; $('liveDone').className = 'btn solid';
+    } catch (err) {
+      // Live camera not allowed here: the photo button becomes the main button.
+      $('viewer').hidden = true;
+      $('camNote').hidden = false;
+      $('snapBtn').className = 'btn solid big'; $('snapBtn').textContent = 'Take photo of label';
+      $('liveDone').className = 'btn';
+    }
+  }
+
+  function stopCamera() {
+    L.running = false;
+    if (L.stream) { L.stream.getTracks().forEach(function (t) { t.stop(); }); L.stream = null; }
+    if (L.wake) { try { L.wake.release(); } catch (e) {} L.wake = null; }
+  }
+
+  async function toggleTorch() {
+    var track = L.stream && L.stream.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !L.torch }] });
+      L.torch = !L.torch;
+      $('torchBtn').textContent = L.torch ? 'Light off' : 'Light on';
+    } catch (e) { $('torchBtn').hidden = true; }
+  }
+
+  async function decodeFrame() {
+    var v = $('video');
+    if (!v.videoWidth) return [];
+    if (L.detector) {
+      var found = await L.detector.detect(v);
+      return found.map(function (b) { return cleanTag(b.rawValue); });
+    }
+    if (!window.ZXingWASM) return [];
+    var W = v.videoWidth, H = v.videoHeight, cw = Math.round(W * 0.84), ch = Math.round(H * 0.5);
+    liveCanvas.width = cw; liveCanvas.height = ch;
+    var g = liveCanvas.getContext('2d', { willReadFrequently: true });
+    g.drawImage(v, (W - cw) / 2, (H - ch) / 2, cw, ch, 0, 0, cw, ch);
+    var rs = await ZXingWASM.readBarcodes(g.getImageData(0, 0, cw, ch), { formats: ['Code128'], tryHarder: false, maxNumberOfSymbols: 2 });
+    return rs.filter(function (r) { return r.isValid; }).map(function (r) { return cleanTag(r.text); });
+  }
+
+  async function scanLoop() {
+    if (!L.running) return;
+    if (!L.pending && L.target != null) {
+      try {
+        var tags = (await decodeFrame()).filter(function (t) { return TAG_RE.test(t); });
+        var uniq = tags.filter(function (t, i) { return tags.indexOf(t) === i; });
+        if (uniq.length === 1) onTag(uniq[0]);
+        else if (uniq.length > 1) setVMsg('Two labels in view. Move closer to one.');
+      } catch (e) { /* skip this frame */ }
+    }
+    setTimeout(scanLoop, 120);
+  }
+
+  function setVMsg(t) { $('vmsg').textContent = t; }
+
+  // ── A scan: check it, show it, queue it, move on ──
+
+  function onTag(tag, confirmed) {
+    var now = Date.now();
+    if (!confirmed && tag === L.lastTag && now - L.lastAt < 4000) return;
+    L.lastTag = tag; L.lastAt = now;
+    var here = L.inv.rows.filter(function (r) { return r.tag === tag; })[0];
+    if (here && !confirmed) {
+      var same = L.replacing && here.row === L.replacing.row;
+      L.last = { state: 'info', tag: tag, box: here.box, msg: same ? 'That’s the tag box ' + here.box + ' already has.' : 'Already on box ' + here.box + '.' };
+      renderLive();
+      return;
+    }
+    var row = rowByNum(L.target);
+    if (!row) return;
+    var oldTag = (L.replacing && L.replacing.row === row.row) ? L.replacing.oldTag : '';
+    if (row.tag && !oldTag) return;
+    if (!confirmed) {
+      var warn = outOfFamily(tag, row);
+      if (warn) {
+        L.pending = { tag: tag, row: row.row, msg: warn };
+        if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+        renderLive();
+        return;
+      }
+    } else {
+      (L.accepted[row.batch] = L.accepted[row.batch] || []).push(parseInt(tag.slice(-6), 10));
+    }
+    L.pending = null;
+    if (navigator.vibrate) navigator.vibrate(80);
+    row.tag = tag;       // shown as filled right away
+    row.saving = true;
+    L.last = { state: 'saving', tag: tag, box: row.box, row: row.row, sheetName: L.inv.sheetName, oldTag: oldTag };
+    L.queue.push({ sheetName: L.inv.sheetName, row: row.row, box: row.box, tag: tag, force: !!confirmed, replaceTag: oldTag || undefined });
+    L.replacing = null;
+    L.target = nextEmpty(row.row);
+    renderLive();
+    pump();
+  }
+
+  /** Sends whatever is queued in one save, then repeats until the queue is empty. */
+  async function pump() {
+    if (L.sending || !L.queue.length) return;
+    L.sending = true;
+    var batch = L.queue.splice(0);
+    var res = null, err = null;
+    for (var attempt = 0; attempt < 3 && !res; attempt++) {
+      try { res = await call('saveTags', { items: batch }); }
+      catch (e) { err = e; await new Promise(function (ok) { setTimeout(ok, 1200 * (attempt + 1)); }); }
+    }
+    batch.forEach(function (item, i) {
+      var r0 = res ? res.results[i] : { ok: false, error: 'Couldn’t reach the sheet (' + errMsg(err) + ').' };
+      var here = L.inv && L.inv.sheetName === item.sheetName ? rowByNum(item.row) : null;
+      var isLast = L.last && L.last.tag === item.tag && L.last.state === 'saving';
+      if (r0.ok) {
+        if (here) here.saving = false;
+        if (isLast) L.last.state = 'added';
+      } else {
+        if (here && here.tag === item.tag) { here.tag = item.replaceTag || ''; here.saving = false; }
+        var msg = r0.error || ('This tag is already on box ' +
+          (((r0.duplicates || [{}])[0].row && here) ? (rowByNum(r0.duplicates[0].row) || {}).box : '?') + ' of this invoice.');
+        L.problems.push({ sheetName: item.sheetName, row: item.row, box: item.box, tag: item.tag, msg: msg, dup: !!r0.duplicates });
+        if (isLast) L.last.state = 'failed';
+        if (navigator.vibrate) navigator.vibrate([200, 80, 200]);
+      }
+    });
+    // Take the sheet's rows, keeping anything still waiting in the queue.
+    if (res && res.rows && L.inv && res.rows[L.inv.sheetName]) {
+      var fresh = res.rows[L.inv.sheetName];
+      L.queue.forEach(function (q) {
+        if (q.sheetName !== L.inv.sheetName) return;
+        var fr = fresh.filter(function (r) { return r.row === q.row; })[0];
+        if (fr && (!fr.tag || fr.tag === q.replaceTag)) { fr.tag = q.tag; fr.saving = true; }
+      });
+      L.inv.rows = fresh;
+      if (L.target != null) { var t = rowByNum(L.target); if (t && t.tag) L.target = nextEmpty(L.target); }
+    }
+    L.sending = false;
+    if (L.queue.length) pump();
+    else if (L.closing) finishLive();
+    if (L.inv) renderLive();
+  }
+
+  function finishLive() {
+    L.closing = false;
+    stopCamera();
+    show('start');
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (L.sending || L.queue.length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  function renderLive() {
+    var inv = L.inv, tagged = inv.rows.filter(function (r) { return r.tag; }).length;
+    var target = rowByNum(L.target);
+    var waiting = L.queue.length + (L.sending ? 1 : 0);
+    $('liveHead').innerHTML = '<div><p class="gname">' + esc(inv.customer) + '</p><p class="gnum">' + esc(inv.invoiceLabel) + '</p></div>' +
+      '<p class="gmeta">' + tagged + ' of ' + inv.rows.length + ' tagged' + (waiting ? '<br>Saving…' : '') +
+      '<br><button type="button" id="invChange">Change invoice</button></p>';
+    $('liveTarget').innerHTML = target
+      ? 'Box <span class="tbox">' + esc(target.box) + '</span> <span class="tsub">' + esc(shortItem(target.item)) + '</span>'
+      : 'Every box on this invoice has a tag.';
+    if (L.replacing && target) {
+      $('liveTarget').innerHTML = 'Replace box <span class="tbox">' + esc(target.box) + '</span> <span class="tsub">' + esc(shortItem(target.item)) + '</span>';
+    }
+    setVMsg(L.pending ? 'Paused. Check the warning below.' : L.replacing ? 'Point at the new label for box ' + (target ? target.box : '') :
+      target ? 'Point at the blue label for box ' + target.box : 'All done. Tap a box to replace its tag.');
+
+    var html = '';
+    if (L.replacing && target) {
+      html += '<div class="last"><div><p class="lmain">' + esc(target.box) + ' <span class="rto">→</span> <span class="ltag">…' + esc(L.replacing.oldTag.slice(-6)) + '</span></p>' +
+        '<p class="lmsg">Scan or photograph the correct label to replace this tag.</p></div><div class="lacts">' +
+        '<button class="btn" type="button" id="clearBox">Clear tag</button><button class="btn" type="button" id="cancelReplace">Cancel</button></div></div>';
+    }
+    L.problems.forEach(function (p, i) {
+      html += '<div class="last bad"><div><p class="lmain">' + esc(p.box) + ' <span class="rto">→</span> <span class="ltag">…' + esc(p.tag.slice(-6)) + '</span></p>' +
+        '<p class="lmsg">Didn’t save: ' + esc(p.msg) + '</p></div><div class="lacts">' +
+        '<button class="btn solid" type="button" data-prob="retry" data-i="' + i + '">' + (p.dup ? 'Save anyway' : 'Retry') + '</button>' +
+        '<button class="btn" type="button" data-prob="dismiss" data-i="' + i + '">Dismiss</button></div></div>';
+    });
+    if (L.pending) {
+      var pr = rowByNum(L.pending.row);
+      html += '<div class="last bad"><div><p class="lmain">' + esc(pr.box) + ' <span class="rto">→</span> <span class="ltag">…' + esc(L.pending.tag.slice(-6)) + '</span></p>' +
+        '<p class="lmsg">' + esc(L.pending.msg) + '</p></div><div class="lacts">' +
+        '<button class="btn solid" type="button" id="pendSave">Save anyway</button><button class="btn" type="button" id="pendSkip">Skip</button></div></div>';
+    } else if (L.last && L.last.state !== 'failed') {
+      var st = L.last.state;
+      html += '<div class="last"><div><p class="lmain">' + esc(L.last.box) + ' <span class="rto">→</span> <span class="ltag">…' + esc(L.last.tag.slice(-6)) + '</span></p>' +
+        '<p class="lmsg">' + esc(st === 'saving' ? 'Saving…' : st === 'added' ? (L.last.oldTag ? 'Replaced …' + L.last.oldTag.slice(-6) + '.' : 'Added.') : L.last.msg) + '</p></div>' +
+        (st === 'added' ? '<button class="btn" type="button" id="undoLast">Undo</button>' : '') + '</div>';
+    }
+    $('liveLast').innerHTML = html;
+
+    $('liveChips').innerHTML = inv.rows.map(function (r) {
+      return '<button type="button" class="chip' + (r.tag ? ' has' : '') + (r.row === L.target ? ' on' : '') + '" data-row="' + r.row + '"' +
+        (r.saving ? ' disabled' : '') + ' aria-label="Box ' + esc(r.box) + (r.tag ? ', tagged. Tap to replace' : '') + '">' + esc(r.box) + '</button>';
+    }).join('');
+    $('liveDone').textContent = L.closing ? 'Finishing…' : 'Done';
+  }
+
+  $('live').addEventListener('click', async function (e) {
+    var t = e.target;
+    var chip = t.closest('.chip[data-row]');
+    if (chip && !chip.disabled) {
+      var cr = rowByNum(+chip.dataset.row);
+      L.target = cr.row; L.pending = null; L.lastTag = '';
+      L.replacing = cr.tag ? { row: cr.row, oldTag: cr.tag } : null;
+      renderLive(); return;
+    }
+    if (t.id === 'cancelReplace') { L.replacing = null; L.target = nextEmpty(null); renderLive(); return; }
+    if (t.id === 'clearBox' && L.replacing) {
+      var rp = L.replacing, rb = rowByNum(rp.row);
+      t.disabled = true;
+      try {
+        var cl = await call('clearTag', { sheetName: L.inv.sheetName, row: rp.row, tag: rp.oldTag });
+        if (cl.rows) L.inv.rows = cl.rows;
+        L.replacing = null; L.target = rp.row; L.lastTag = '';
+        L.last = { state: 'info', tag: rp.oldTag, box: rb.box, msg: 'Cleared. Scan the right label for box ' + rb.box + '.' };
+      } catch (err) { L.last = { state: 'info', tag: rp.oldTag, box: rb.box, msg: errMsg(err) }; }
+      renderLive(); return;
+    }
+    if (t.id === 'pendSave') { var p = L.pending; L.pending = null; L.target = p.row; onTag(p.tag, true); return; }
+    if (t.id === 'pendSkip') { L.pending = null; renderLive(); return; }
+    if (t.id === 'torchBtn') { toggleTorch(); return; }
+    if (t.id === 'invChange') { stopCamera(); openPicker(); return; }
+    if (t.id === 'liveDone') {
+      if (L.sending || L.queue.length) { L.closing = true; renderLive(); } else finishLive();
+      return;
+    }
+    if (t.dataset && t.dataset.prob) {
+      var i = +t.dataset.i, pb = L.problems[i];
+      L.problems.splice(i, 1);
+      if (t.dataset.prob === 'retry' && pb.sheetName === L.inv.sheetName) {
+        var pr2 = rowByNum(pb.row);
+        if (pr2 && !pr2.tag) { L.target = pb.row; L.lastTag = ''; onTag(pb.tag, true); return; }
+      }
+      renderLive();
+      return;
+    }
+    if (t.id === 'undoLast' && L.last && L.last.row) {
+      var undo = L.last;
+      try {
+        if (undo.oldTag) {
+          // Undo a replacement: put the old tag back.
+          var ur = await call('saveTags', { items: [{ sheetName: undo.sheetName, row: undo.row, box: undo.box, tag: undo.oldTag, replaceTag: undo.tag, force: true }] });
+          if (!ur.results[0].ok) throw new Error(ur.results[0].error || 'Couldn’t put the old tag back.');
+          if (ur.rows && ur.rows[L.inv.sheetName]) L.inv.rows = ur.rows[L.inv.sheetName];
+          L.target = nextEmpty(null); L.lastTag = '';
+          L.last = { state: 'info', tag: undo.oldTag, box: undo.box, msg: 'Put the old tag back on box ' + undo.box + '.' };
+        } else {
+          var u = await call('clearTag', { sheetName: undo.sheetName, row: undo.row, tag: undo.tag });
+          if (u.rows && L.inv.sheetName === undo.sheetName) L.inv.rows = u.rows;
+          L.target = undo.row; L.lastTag = '';
+          L.last = { state: 'info', tag: undo.tag, box: undo.box, msg: 'Removed from box ' + undo.box + '.' };
+        }
+      } catch (err) { L.last = { state: 'info', tag: undo.tag, box: undo.box, msg: errMsg(err) }; }
+      renderLive();
+    }
+  });
+
+  // Fallback when live camera isn't allowed: photograph the label; the phone decodes it.
+  $('snapBtn').addEventListener('click', function () { $('snap').click(); });
+  $('snap').addEventListener('change', async function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    var box = (rowByNum(L.target) || {}).box || '?';
+    L.last = { state: 'info', tag: '------', box: box, msg: 'Reading the barcode…' };
+    renderLive();
+    try {
+      var img = await loadImage(file);
+      var codes = await findBarcodes(img);
+      var tags = codes.map(function (c) { return c.tag; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+      if (tags.length === 1) { L.lastTag = ''; onTag(tags[0]); }
+      else {
+        L.last = { state: 'info', tag: '------', box: box,
+          msg: tags.length ? 'More than one tag in the photo. Get closer to one label.' : 'No barcode found. Get closer and avoid glare.' };
+        renderLive();
+      }
+    } catch (err) {
+      L.last = { state: 'info', tag: '------', box: box, msg: errMsg(err) };
+      renderLive();
+    }
+  });
+
+  async function reanalyze(extra) {
+    $('working').hidden = false;
+    step('Matching…');
+    $('results').innerHTML = '';
+    try {
+      var req = { sections: S.sections || [] };
+      for (var k in extra) req[k] = extra[k];
+      setData(await call('processPhoto', req));
+      S.error = (S.data.groups || []).length ? '' : 'No tab found for that invoice number.';
+    } catch (err) {
+      S.error = errMsg(err);
+    }
+    $('working').hidden = true;
+    render();
+  }
+})();
+</script>
+</body>
+</html>
