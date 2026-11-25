@@ -177,6 +177,9 @@
   #setup .why { margin: 10px 0; }
   .note { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--sticker); color: var(--ink); font-size: 15px; }
   @media (prefers-reduced-motion: reduce) { .bars { animation: none; } }
+  .sites { display: flex; gap: 8px; margin-top: 10px; }
+  .sites .btn { flex: 1; margin: 0; line-height: 1.25; }
+  .sites small { display: block; font-weight: 400; font-size: 12px; opacity: .75; }
 </style>
 </head>
 <body>
@@ -220,6 +223,7 @@
 
   <section id="pickInv" hidden>
     <p class="ttl">Which invoice?</p>
+    <div class="sites" id="siteRow" role="group" aria-label="License"><button class="btn" type="button" data-site="FR">Fall River<small>MP281319</small></button><button class="btn" type="button" data-site="LV">Lakeville<small>MC282112</small></button></div>
     <div class="inrow" style="margin-top:10px"><input id="invNum" inputmode="numeric" pattern="[0-9]*" placeholder="Invoice #" aria-label="Invoice number">
       <button class="btn solid" type="button" id="invFind" style="flex:none">Open</button></div>
     <div class="invlist" id="invList"></div>
@@ -738,14 +742,36 @@
     ['start', 'working', 'results', 'pickInv', 'live', 'setup'].forEach(function (s) { $(s).hidden = s !== id && !(id === 'start' && s === 'results'); });
   }
 
+  // Which license's invoices to list. Remembered on this phone.
+  var SITE = 'FR';
+  try { SITE = localStorage.getItem('wti.site') || 'FR'; } catch (e) {}
+  function paintSites() {
+    document.querySelectorAll('#siteRow [data-site]').forEach(function (b) {
+      var on = b.dataset.site === SITE;
+      b.classList.toggle('solid', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  $('siteRow').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-site]');
+    if (!b || b.dataset.site === SITE) return;
+    SITE = b.dataset.site;
+    try { localStorage.setItem('wti.site', SITE); } catch (x) {}
+    openPicker();
+  });
+
   async function openPicker() {
     show('pickInv');
+    paintSites();
     var list = $('invList');
     list.innerHTML = '<p class="muted">Loading invoices…</p>';
     try {
-      if (!L.recent) L.recent = (await call('listInvoices')).tabs;
-      list.innerHTML = L.recent.map(function (n) {
-        return '<button type="button" data-inv="' + esc(n) + '">' + esc(n) + '</button>';
+      var site = SITE;
+      L.recent = L.recent || {};
+      if (!L.recent[site]) L.recent[site] = (await call('listInvoices', { site: site })).tabs;
+      if (site !== SITE) return;   // switched license while loading
+      list.innerHTML = L.recent[site].map(function (n) {
+        return '<button type="button" data-inv="' + esc(n) + '">' + esc(n.replace(/^Lakeville › /, '')) + '</button>';
       }).join('');
     } catch (err) {
       list.innerHTML = '<div class="tape"><p>' + esc(errMsg(err)) + '</p></div>';
@@ -758,7 +784,7 @@
   });
   $('invFind').addEventListener('click', function () {
     var v = ($('invNum').value || '').replace(/\D/g, '');
-    if (v.length >= 4) chooseInvoice({ invoice: v });
+    if (v.length >= 4) chooseInvoice({ invoice: v, site: SITE });
   });
   $('invNum').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('invFind').click(); } });
   $('invCancel').addEventListener('click', function () { show('start'); });
