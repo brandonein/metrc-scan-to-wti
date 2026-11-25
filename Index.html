@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0F0D" media="(prefers-color-scheme: dark)">
 <base target="_top">
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -180,6 +183,109 @@
   .sites { display: flex; gap: 8px; margin-top: 10px; }
   .sites .btn { flex: 1; margin: 0; line-height: 1.25; }
   .sites small { display: block; font-weight: 400; font-size: 12px; opacity: .75; }
+
+/* ───────── Theme v2: clean light / dark (follows the phone setting) ───────── */
+:root {
+  --bg: #F2F4F3; --card: #FFFFFF; --ink2: #0F1A14; --mut: #5F6B66; --line: #E2E7E4; --seg: #E6EBE8;
+  --acc: #157A4A; --acc-ink: #FFFFFF; --acc-soft: #E5F3EB; --acc-line: #B7DEC8;
+  --warn: #9A5B00; --warn-soft: #FFF3D6; --bad: #B42318; --bad-soft: #FDECEA;
+  --shadow: 0 1px 2px rgba(16,24,20,.06), 0 4px 14px rgba(16,24,20,.06);
+  --kraft: var(--bg); --page: var(--bg); --sticker: var(--card); --ink: var(--ink2); --text: var(--ink2);
+  --muted: var(--mut); --soft: var(--line); --btn-bg: var(--acc); --btn-fg: var(--acc-ink);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0B0F0D; --card: #151B18; --ink2: #EAF1ED; --mut: #93A39B; --line: #26302B; --seg: #1C2420;
+    --acc: #3DDC84; --acc-ink: #04210F; --acc-soft: #12301F; --acc-line: #1F5A39;
+    --warn: #F5B547; --warn-soft: #33270F; --bad: #FF8A80; --bad-soft: #3A1714;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+html body { background: var(--bg); color: var(--ink2); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+html main { max-width: 520px; margin: 0 auto; padding: 14px 16px 28px; }
+html h1 { font-family: inherit; font-size: 19px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; margin: 2px 0 16px; color: var(--ink2); }
+html h1::before { content: ''; width: 28px; height: 28px; border-radius: 9px; flex: none;
+  background: var(--acc) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M5 6v12M9 6v12M13 6v12M17 6v12M20 6v12'/%3E%3C/svg%3E") center/16px no-repeat; }
+@media (prefers-color-scheme: dark) { html h1::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2304210F' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M5 6v12M9 6v12M13 6v12M17 6v12M20 6v12'/%3E%3C/svg%3E"); } }
+html button, html input { font-family: inherit; }
+html :focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+
+/* Start screen */
+html .scan { border: 1px solid transparent; border-radius: 18px; background: var(--acc); color: var(--acc-ink); box-shadow: var(--shadow); font-family: inherit; font-weight: 700; letter-spacing: -.01em; }
+html .scan.alt { background: var(--card); color: var(--ink2); border-color: var(--line); }
+html .scan svg { opacity: .95; }
+html .pick { color: var(--mut); font-family: inherit; font-weight: 600; text-decoration: none; }
+html .pick:hover { color: var(--acc); }
+
+/* Buttons and fields */
+html .btn { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink2); font-family: inherit; font-weight: 650; box-shadow: none; }
+html .btn.solid { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+html .btn.big { border-radius: 16px; font-size: 17px; box-shadow: var(--shadow); }
+html .btn:disabled { opacity: .45; }
+html .inrow input, html .field, html .tagin { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink2); font-family: inherit; font-weight: 600; box-shadow: none; }
+html .inrow input:focus, html .field:focus, html .tagin:focus { border-color: var(--acc); outline: 3px solid var(--acc-soft); outline-offset: 0; }
+html .ttl { font-family: inherit; font-weight: 750; letter-spacing: -.01em; color: var(--ink2); }
+html .muted, html .flabel { color: var(--mut); }
+
+/* License picker (segmented) */
+html .sites { background: var(--seg); padding: 4px; border-radius: 14px; gap: 4px; margin: 12px 0 2px; }
+html .sites .btn { border: 0; background: transparent; color: var(--mut); padding: 9px 6px; border-radius: 11px; box-shadow: none; }
+html .sites .btn.solid { background: var(--card); color: var(--ink2); box-shadow: var(--shadow); }
+html .sites .btn.solid small { color: var(--acc); opacity: 1; }
+html .sites small { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .02em; margin-top: 2px; }
+
+/* Invoice list */
+html .invlist { display: grid; gap: 8px; }
+html .invlist button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink2); padding: 13px 14px; box-shadow: var(--shadow); font-family: inherit; margin: 0; }
+html .invlist button:active { transform: scale(.99); border-color: var(--acc-line); }
+html .invlist .iwrap { flex: 1; min-width: 0; display: block; }
+html .invlist .iname { display: block; font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html .invlist .imeta { display: block; color: var(--mut); font-size: 13px; font-weight: 500; margin-top: 2px; }
+html .invlist .iinv { color: var(--acc); font-weight: 700; font-variant-numeric: tabular-nums; }
+html .invlist .ichev { color: var(--mut); font-size: 22px; line-height: 1; flex: none; }
+
+/* Live scanning */
+html .ghead { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); align-items: center; }
+html .gname { font-family: inherit; color: var(--mut); font-weight: 600; font-size: 14px; }
+html .gnum { font-family: inherit; color: var(--ink2); font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html .gmeta { color: var(--mut); font-weight: 600; }
+html .gmeta button { color: var(--acc); font-weight: 700; text-decoration: none; }
+html .tbox { font-family: inherit; font-weight: 800; background: var(--acc); color: var(--acc-ink); border: 0; border-radius: 10px; padding: 1px 10px; display: inline-block; font-size: 1.15em; transform: none; }
+html .tsub { color: var(--mut); font-weight: 500; }
+html .viewer { border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); background: #000; }
+html .frame { border-radius: 14px; border-color: rgba(255,255,255,.85); box-shadow: 0 0 0 9999px rgba(0,0,0,.28); }
+html .torch { border-radius: 999px; font-family: inherit; font-weight: 700; }
+html .note { background: var(--acc-soft); color: var(--ink2); border: 1px solid var(--acc-line); border-radius: 14px; box-shadow: none; }
+html .last { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+html .last.bad { background: var(--bad-soft); border-color: transparent; }
+html .ltag { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+html .chips { gap: 7px; }
+html .chip { border: 1px solid var(--line); border-radius: 11px; background: var(--card); color: var(--ink2); font-family: inherit; font-weight: 700; box-shadow: none; font-variant-numeric: tabular-nums; }
+html .chip.on, html .live .chip.has.on { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+html .live .chip.has { background: var(--acc-soft); color: var(--acc); border-color: var(--acc-line); opacity: 1; }
+html .live .chip:disabled, html .chip:disabled { opacity: .45; }
+html .acts { position: sticky; bottom: 0; z-index: 5; padding: 14px 0 calc(8px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent, var(--bg) 35%); }
+
+/* Photo mode results */
+html .tape { background: var(--warn-soft); color: var(--ink2); border: 0; border-radius: 14px; transform: none; box-shadow: none; }
+html .r { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+html .r.warn { border-color: var(--warn); }
+html .r.done { opacity: .75; }
+html .rbox { font-family: inherit; font-weight: 800; }
+html .rtag { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+html .rstat.ok { color: var(--acc); }
+html .rstat.warn, html .why { color: var(--warn); }
+html .why.ok { color: var(--acc); }
+html .bar { background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
+html .bar .add { background: var(--acc); color: var(--acc-ink); border-radius: 14px; border: 0; font-family: inherit; font-weight: 700; }
+html .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+html .alts button { border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink2); font-family: inherit; }
+html .working { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+
+html .gmeta { white-space: nowrap; text-align: right; font-size: 13px; line-height: 1.5; }
+html .ghead { gap: 12px; } html .ghead > div { min-width: 0; } html .gnum { font-size: 28px; line-height: 1.1; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -771,7 +877,11 @@
       if (!L.recent[site]) L.recent[site] = (await call('listInvoices', { site: site })).tabs;
       if (site !== SITE) return;   // switched license while loading
       list.innerHTML = L.recent[site].map(function (n) {
-        return '<button type="button" data-inv="' + esc(n) + '">' + esc(n.replace(/^Lakeville › /, '')) + '</button>';
+        var t = n.replace(/^Lakeville › /, '').trim(), d = (t.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/) || [''])[0];
+      var nums = t.replace(d, '').match(/\d{5}(?:\/\d{5})*/) || [''];
+      var nm = t.replace(d, '').replace(nums[0], '').replace(/\s+/g, ' ').trim() || t;
+      return '<button type="button" data-inv="' + esc(n) + '"><span class="iwrap"><span class="iname">' + esc(nm) + '</span><span class="imeta">' +
+        (nums[0] ? '<span class="iinv">#' + esc(nums[0]) + '</span>' + (d ? ' · ' : '') : '') + esc(d) + '</span></span><span class="ichev" aria-hidden="true">›</span></button>';
       }).join('');
     } catch (err) {
       list.innerHTML = '<div class="tape"><p>' + esc(errMsg(err)) + '</p></div>';
